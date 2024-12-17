@@ -1,0 +1,53 @@
+# 既存の内容はそのままで、development セクションを更新
+development:
+  environment:
+    variables:
+      - DATABASE_URL: postgresql://postgres:postgres@db:5432/project_e
+      - JWT_SECRET: development-secret-key
+      - BACKEND_URL: http://localhost:8000
+      - FRONTEND_URL: http://localhost:5173
+    
+  docker:
+    services:
+      frontend:
+        port: 5173
+        environment:
+          - VITE_API_URL: http://backend:8000
+        dependencies:
+          - backend
+      
+      backend:
+        port: 8000
+        environment:
+          - DATABASE_URL: postgresql://postgres:postgres@db:5432/project_e
+          - JWT_SECRET: development-secret-key
+        dependencies:
+          - db
+      
+      database:
+        image: postgres:14-alpine
+        port: 5432
+        environment:
+          - POSTGRES_USER: postgres
+          - POSTGRES_PASSWORD: postgres
+          - POSTGRES_DB: project_e
+        volumes:
+          - postgres_data:/var/lib/postgresql/data
+
+  setup:
+    docker:
+      - docker-compose build
+      - docker-compose up -d
+    local:
+      backend:
+        - cd backend
+        - poetry install
+        - poetry run uvicorn main:app --reload
+      frontend:
+        - cd frontend
+        - pnpm install
+        - pnpm dev
+      database:
+        - docker compose up -d db
+
+# 残りの内容は変更なし

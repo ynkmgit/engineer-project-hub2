@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  backend-poetry:
+    image: python:3.11
+    volumes:
+      - ./backend:/app
+    working_dir: /app
+    command: >
+      bash -c "pip install poetry &&
+              poetry config virtualenvs.create false &&
+              poetry install &&
+              tail -f /dev/null"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/project_e
+      - JWT_SECRET=development-secret-key
+    depends_on:
+      - db
+
+  frontend-pnpm:
+    image: node:18
+    volumes:
+      - ./frontend:/app
+    working_dir: /app
+    command: >
+      bash -c "corepack enable &&
+              corepack prepare pnpm@latest --activate &&
+              pnpm install &&
+              tail -f /dev/null"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://backend:8000
+    depends_on:
+      - backend
+
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=project_e
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
